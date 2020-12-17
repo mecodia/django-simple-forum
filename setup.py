@@ -47,11 +47,5 @@ setup(
     install_requires=[
         "Django>=1.11.21",
         'django-simple-pagination',
-        'django-storages',
-        'microurl',
-        'boto',
-        'sendgrid',
-        'sorl-thumbnail==12.4a1',
-        'django-ses-gateway'
     ],
 )

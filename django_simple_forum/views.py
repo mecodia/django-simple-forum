@@ -1,5 +1,6 @@
-import urllib
 import requests
+import urllib
+
 try:
     from urllib.parse import urlparse
 except ImportError:
@@ -14,32 +15,27 @@ from django.contrib.auth.hashers import check_password
 from django.db.models import Q
 from django.http import JsonResponse
 from django.http.response import HttpResponseRedirect, HttpResponse
-from django.views.generic import TemplateView, UpdateView, ListView, CreateView, DetailView,\
+from django.views.generic import TemplateView, UpdateView, ListView, CreateView, DetailView, \
     DeleteView, View
 from django.views.generic.edit import FormView
 from django.views.generic.detail import SingleObjectMixin
 from django.shortcuts import redirect, render, get_object_or_404
-from django.template import Context,loader
+from django.template import Context, loader
 from django.template.defaultfilters import slugify
 from django.utils.crypto import get_random_string
 
 try:
     from django.contrib.auth import get_user_model
+
     User = get_user_model()
 except ImportError:
     from django.contrib.auth.models import User
 
-# from endless_pagination.views import AjaxListView
-from microurl import google_mini
-
 from .forms import LoginForm
-from .models import ForumCategory, STATUS, Badge, Topic, Tags, UserProfile, UserTopics, Timeline,\
-    Facebook, Google, Comment, Vote
+from .models import ForumCategory, STATUS, Badge, Topic, Tags, UserProfile, UserTopics, Timeline, Comment, Vote
 from .mixins import AdminMixin, LoginRequiredMixin, CanUpdateTopicMixin
-from .forms import CategoryForm, BadgeForm, RegisterForm, TopicForm, CommentForm, UserProfileForm,\
+from .forms import CategoryForm, BadgeForm, RegisterForm, TopicForm, CommentForm, UserProfileForm, \
     ChangePasswordForm, UserChangePasswordForm, ForgotPasswordForm
-# from mpcomp.facebook import GraphAPI, get_access_token_from_code
-from .sending_mail import Memail
 
 
 def timeline_activity(user, content_object, namespace, event_type):
@@ -51,48 +47,8 @@ def timeline_activity(user, content_object, namespace, event_type):
     )
 
 
-class LoginView(FormView):
-    template_name = 'dashboard/dashboard_login.html'
-    form_class = LoginForm
-
-    def dispatch(self, request, *args, **kwargs):
-        if request.user.is_authenticated():
-            if request.user.is_superuser:
-                return redirect('django_simple_forum:dashboard')
-            else:
-                return redirect('django_simple_forum:topic_list')
-        return super(LoginView, self).dispatch(request, *args, **kwargs)
-
-    def form_valid(self, form):
-        user = form.get_user()
-        if user.is_superuser:
-            login(self.request, form.get_user())
-            data = {
-                'error': False,
-                'response': 'You have successfully logged into the dashboard'
-            }
-        else:
-            data = {
-                'error': True,
-                'response': 'You dont have access to login to dashboard'
-            }
-        return JsonResponse(data)
-
-    def form_invalid(self, form):
-        return JsonResponse({'error': True, 'response': form.errors})
-
-
 class DashboardView(AdminMixin, TemplateView):
     template_name = 'dashboard/dashboard.html'
-
-
-def getout(request):
-    if not request.user.is_superuser:
-        logout(request)
-        return HttpResponseRedirect(reverse('django_simple_forum:topic_list'))
-    else:
-        logout(request)
-        return HttpResponseRedirect(reverse('django_simple_forum:dashboard'))
 
 
 class CategoryList(AdminMixin, ListView):
@@ -524,7 +480,7 @@ class TopicUpdateView(CanUpdateTopicMixin, UpdateView):
         topic = self.get_object()
         tags = [tag.title for tag in topic.tags.all()]
         initital.update({
-            "tags": ",".join(tags)    
+            "tags": ",".join(tags)
         })
         return initital
 
@@ -560,11 +516,12 @@ class TopicList(ListView):
 
     def get_queryset(self):
         if self.request.user.is_authenticated():
-            query = Q(status='Published')|Q(created_by=self.request.user)
+            query = Q(status='Published') | Q(created_by=self.request.user)
         else:
             query = Q(status='Published')
         queryset = Topic.objects.filter(query).order_by('-created_on')
         return queryset
+
 
 class TopicView(TemplateView):
     template_name = 'forum/view_topic.html'
@@ -603,12 +560,11 @@ class TopicDeleteView(CanUpdateTopicMixin, DeleteView):
 
     def delete(self, request, *args, **kwargs):
         if request.is_ajax():
-            self.object = self.get_object() 
+            self.object = self.get_object()
             self.object.delete()
             return JsonResponse({"error": False, "message": "deleted"})
         else:
             return super(TopicDeleteView, self).delete(request, *args, **kwargs)
-
 
 
 def comment_mentioned_users_list(data):
@@ -654,7 +610,6 @@ class CommentVoteDownView(LoginRequiredMixin, View):
         return JsonResponse({"status": status})
 
 
-
 class CommentAdd(LoginRequiredMixin, CreateView):
     model = Topic
     form_class = CommentForm
@@ -678,7 +633,7 @@ class CommentAdd(LoginRequiredMixin, CreateView):
         for user in comment.topic.get_topic_users():
             mto = [user.user.email]
             c = {'comment': comment, "user": user.user,
-                 'topic_url': settings.HOST_URL+reverse('django_simple_forum:view_topic', kwargs={'slug': comment.topic.slug}),
+                 'topic_url': settings.HOST_URL + reverse('django_simple_forum:view_topic', kwargs={'slug': comment.topic.slug}),
                  "HOST_URL": settings.HOST_URL}
             t = loader.get_template('emails/comment_add.html')
             subject = "New Comment For The Topic " + (comment.topic.title)
@@ -689,7 +644,7 @@ class CommentAdd(LoginRequiredMixin, CreateView):
         for user in comment.mentioned.all():
             mto = [user.user.email]
             c = Context({'comment': comment, "user": user.user,
-                         'topic_url': settings.HOST_URL+reverse('django_simple_forum:view_topic', kwargs={'slug': comment.topic.slug}),
+                         'topic_url': settings.HOST_URL + reverse('django_simple_forum:view_topic', kwargs={'slug': comment.topic.slug}),
                          "HOST_URL": settings.HOST_URL})
             t = loader.get_template('emails/comment_mentioned.html')
             subject = "New Comment For The Topic " + (comment.topic.title)
@@ -860,11 +815,11 @@ class ForumCategoryView(ListView):
 
     def get_queryset(self, queryset=None):
         if self.request.user.is_authenticated():
-            query = Q(status="Published")|Q(created_by=self.request.user)
+            query = Q(status="Published") | Q(created_by=self.request.user)
         else:
             query = Q(status="Published")
         category = get_object_or_404(ForumCategory, slug=self.kwargs.get("slug"))
-        topics = category.topic_set.filter(query) 
+        topics = category.topic_set.filter(query)
         return topics
 
 
@@ -1082,25 +1037,6 @@ class ProfileView(TemplateView):
         return context
 
 
-class UserProfilePicView(LoginRequiredMixin, View):
-    model = UserProfile
-
-    def get_object(self):
-        return get_object_or_404(UserProfile, user_id=self.request.user.id)
-
-    def get_success_url(self):
-        return redirect(reverse('django_simple_forum:user_profile'))
-
-    def post(self, request, *args, **kwargs):
-        user_profile = self.get_object()
-        if 'profile_pic' in request.FILES:
-            user_profile.profile_pic = request.FILES['profile_pic']
-            user_profile.save()
-            return JsonResponse({'error': False, 'response': 'Successfully uploaded'})
-        else:
-            return JsonResponse({'error': True, 'response': 'Please Upload Your Profile pic'})
-
-
 class UserSettingsView(LoginRequiredMixin, View):
     model = UserProfile
 
@@ -1134,184 +1070,6 @@ class UserDetailView(TemplateView):
         return context
 
 
-def facebook_login(request):
-    if 'code' in request.GET:
-        accesstoken = get_access_token_from_code(request.GET['code'], request.scheme + '://' + request.META[
-                                                 'HTTP_HOST'] + reverse('django_simple_forum:facebook_login'), settings.FB_APP_ID, settings.FB_SECRET)
-        if 'error' in accesstoken.keys():
-            return render(request, '404.html')
-        graph = GraphAPI(accesstoken['access_token'])
-        accesstoken = graph.extend_access_token(
-            settings.FB_APP_ID, settings.FB_SECRET)['accesstoken']
-        profile = graph.get_object("me")
-        hometown = profile['hometown'][
-            'name'] if 'hometown' in profile.keys() else ''
-        location = profile['location'][
-            'name'] if 'location' in profile.keys() else ''
-        bday = datetime.strptime(profile['birthday'], '%m/%d/%Y').strftime(
-            '%Y-%m-%d') if 'birthday' in profile.keys() else '1970-09-09'
-        profile_pic = "https://graph.facebook.com/" + \
-            profile['id'] + "/picture?type=large"
-
-        if 'email' in profile.keys():
-            if User.objects.filter(username=profile['email'], email=profile['email']):
-                user = User.objects.filter(
-                    username=profile['email'], email=profile['email']).first()
-            else:
-                user, created = User.objects.get_or_create(
-                    username=profile['email'],
-                    email=profile['email'],
-                    first_name=profile['first_name'],
-                    last_name=profile['last_name'],
-                    last_login=datetime.now()
-                )
-            user_profile = UserProfile.objects.filter(user=user).last()
-            if not user_profile:
-                user_profile = UserProfile.objects.create(
-                    user=user, user_roles="Publisher")
-            name = urlparse(profile_pic).path.split('/')[-1]
-            # content = urllib.urlretrieve(profile_pic)
-            content = urllib.request.urlretrieve(profile_pic)
-            user_profile.profile_pic.save(
-                name, File(open(content[0], 'rb')), save=True)
-            user_profile.save()
-
-            fb = Facebook.objects.filter(user=user).last()
-            if not fb:
-                Facebook.objects.create(
-                    user=user,
-                    facebook_url=profile['link'],
-                    facebook_id=profile['id'],
-                    first_name=profile['first_name'],
-                    last_name=profile['last_name'],
-                    verified=profile['verified'],
-                    name=profile['name'],
-                    language=profile['locale'],
-                    hometown=hometown,
-                    email=profile['email'],
-                    gender=profile['gender'],
-                    dob=bday,
-                    location=location,
-                    timezone=profile['timezone'],
-                    accesstoken=accesstoken
-                )
-            else:
-                fb.user = user
-                fb.facebook_url = profile['link']
-                fb.facebook_id = profile['id']
-                fb.first_name = profile['first_name']
-                fb.last_name = profile['last_name']
-                fb.verified = profile['verified']
-                fb.name = profile['name']
-                fb.language = profile['locale']
-                fb.hometown = hometown
-                fb.email = profile['email']
-                fb.gender = profile['gender']
-                fb.dob = bday
-                fb.location = location
-                fb.timezone = profile['timezone']
-                fb.accesstoken = accesstoken
-                fb.save()
-            if not request.user.is_authenticated():
-                if not hasattr(user, 'backend'):
-                    for backend in settings.AUTHENTICATION_BACKENDS:
-                        if user == load_backend(backend).get_user(user.pk):
-                            user.backend = backend
-                            break
-                if hasattr(user, 'backend'):
-                    login(request, user)
-            return HttpResponseRedirect('/forum/')
-        else:
-            return render(request, '404.html')
-    elif 'error' in request.GET:
-        print(request.GET)
-    else:
-        rty = "https://graph.facebook.com/oauth/authorize?client_id=" + settings.FB_APP_ID + "&redirect_uri=" + request.scheme + '://' + request.META['HTTP_HOST'] + reverse(
-            'django_simple_forum:facebook_login') + "&scope=manage_pages,read_stream, user_about_me, user_birthday, user_location, user_work_history, user_hometown, user_website, email, user_likes, user_groups"
-        return HttpResponseRedirect(rty)
-
-
-def google_login(request):
-    if 'code' in request.GET:
-        params = {
-            'grant_type': 'authorization_code',
-            'code': request.GET.get('code'),
-            'redirect_uri': request.scheme + "://" + request.META['HTTP_HOST'] + reverse('django_simple_forum:google_login'),
-            'client_id': settings.GP_CLIENT_ID,
-            'client_secret': settings.GP_CLIENT_SECRET
-        }
-        info = requests.post(
-            "https://accounts.google.com/o/oauth2/token", data=params)
-        info = info.json()
-        url = 'https://www.googleapis.com/oauth2/v1/userinfo'
-        params = {'access_token': info['access_token']}
-        kw = dict(params=params, headers={}, timeout=60)
-        response = requests.request('GET', url, **kw)
-        user_document = response.json()
-        link = "https://plus.google.com/" + user_document['id']
-        picture = user_document[
-            'picture'] if 'picture' in user_document.keys() else ""
-        dob = user_document[
-            'birthday'] if 'birthday' in user_document.keys() else ""
-        gender = user_document[
-            'gender'] if 'gender' in user_document.keys() else ""
-        link = user_document[
-            'link'] if 'link' in user_document.keys() else link
-
-        if request.user.is_authenticated():
-            user = request.user
-        else:
-            user = User.objects.filter(email=user_document['email']).first()
-        if user:
-            user.first_name = user_document['name']
-            user.last_name = user_document['family_name']
-            user.save()
-        else:
-            user = User.objects.create(
-                username=user_document['email'],
-                email=user_document['email'],
-                first_name=user_document['name'],
-                last_name=user_document['family_name'],
-            )
-        user.save()
-
-        user_profile = UserProfile.objects.filter(user=user).last()
-        if not user_profile:
-            user_profile = UserProfile.objects.create(
-                user=user, user_roles="Publisher")
-        google, created = Google.objects.get_or_create(user=user)
-        google.user = user
-        google.google_url = link
-        google.verified_email = user_document['verified_email']
-        google.google_id = user_document['id']
-        google.family_name = user_document['family_name']
-        google.name = user_document['name']
-        google.given_name = user_document['given_name']
-        google.dob = dob
-        google.email = user_document['email']
-        google.gender = gender
-        google.picture = picture
-        google.save()
-
-        if not request.user.is_authenticated():
-            if not hasattr(user, 'backend'):
-                for backend in settings.AUTHENTICATION_BACKENDS:
-                    if user == load_backend(backend).get_user(user.pk):
-                        user.backend = backend
-                        break
-            if hasattr(user, 'backend'):
-                login(request, user)
-        return HttpResponseRedirect('/forum/')
-    else:
-        rty = "https://accounts.google.com/o/oauth2/auth?client_id=" + settings.GP_CLIENT_ID\
-              + "&response_type=code"
-        rty += "&scope=https://www.googleapis.com/auth/userinfo.profile \
-               https://www.googleapis.com/auth/userinfo.email&redirect_uri=" + request.scheme\
-               + "://" + request.META['HTTP_HOST'] + reverse('django_simple_forum:google_login')\
-               + "&state=1235dfghjkf123"
-        return HttpResponseRedirect(rty)
-
-
 def get_mentioned_user(request, topic_id):
     topic = get_object_or_404(Topic, id=topic_id)
     if request.method == 'GET':
@@ -1331,57 +1089,3 @@ def comment_mentioned_users_list(data):
     mentioned_users_list = [user.strip('@') for user in mentioned_users]
     result = User.objects.filter(username__in=mentioned_users_list)
     return result
-
-
-class UserChangePassword(LoginRequiredMixin, FormView):
-    template_name = 'forum/topic_list.html'
-    form_class = UserChangePasswordForm
-
-    def form_valid(self, form):
-        user = self.request.user
-        if self.request.POST['newpassword'] != self.request.POST['retypepassword']:
-            return JsonResponse({
-                'error': True,
-                'response': {
-                    'newpassword': 'New password and Confirm Passwords did not match'
-                }
-            })
-        user.set_password(self.request.POST['newpassword'])
-        user.save()
-        return JsonResponse({
-            'error': False,
-            'message': 'Password changed successfully'
-        })
-
-    def form_invalid(self, form):
-        return JsonResponse({'error': True, 'response': form.errors})
-
-
-class ForgotPasswordView(FormView):
-    template_name = 'form/topic_list.html'
-    form_class = ForgotPasswordForm
-
-    def form_valid(self, form):
-        user = User.objects.filter(email=self.request.POST.get('email'))
-        if user:
-            user = user[0]
-            subject = "Password Reset"
-            password = get_random_string(6)
-            message = '<p>Your Password for the forum account is <strong>'+password + \
-                '</strong></p><br/><p>Use this credentials to login into <a href="' + \
-                settings.HOST_URL + '/forum/">forum</a></p>'
-            to = user.email
-            from_email = settings.DEFAULT_FROM_EMAIL
-            Memail([to], from_email, subject, message, email_template_name=None, context=None)
-            user.set_password(password)
-            user.save()
-            data = {
-                "error": False, "response": "An Email is sent to the entered email id"}
-            return JsonResponse(data)
-        else:
-            data = {
-                "error": True, "message": "User With this email id doesn't exists!!!"}
-            return JsonResponse(data)
-
-    def form_invalid(self, form):
-        return JsonResponse({'error': True, 'response': form.errors})

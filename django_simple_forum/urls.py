@@ -3,10 +3,6 @@ from . import  views
 
 urlpatterns = [
     url(r'^$', views.TopicList.as_view(), name="topic_list"),
-    url(r'^register/$', views.IndexView.as_view(), name="signup"),
-    url(r'^forum/login/$', views.ForumLoginView.as_view(), name="user_login"),
-    url(r'^fb_login/$', views.facebook_login, name="facebook_login"),
-    url(r'^gp_login/$', views.google_login, name="google_login"),
 
     url(r'^topic/add/$', views.TopicAdd.as_view(), name="new_topic"),
     url(r'^topic/(?P<slug>[-\w]+)/update/$', views.TopicUpdateView.as_view(), name="topic_update"),
@@ -18,8 +14,6 @@ urlpatterns = [
 
     url(r'^mentioned-users/(?P<topic_id>[-\w]+)/$', views.get_mentioned_user, name="get_mentioned_user"),
     url(r'^user/profile/(?P<user_name>[a-zA-Z0-9_.-@]+)/$', views.ProfileView.as_view(), name="view_profile"),
-    url(r'^change-password/$', views.UserChangePassword.as_view(), name="user_change_password"),
-    url(r'^forgot-password/$', views.ForgotPasswordView.as_view(), name="forgot_password"),
     url(r'^comment/delete/(?P<comment_id>[-\w]+)/$',
         views.CommentDelete.as_view(), name="comment_delete"),
     url(r'^comment/edit/(?P<comment_id>[-\w]+)/$', views.CommentEdit.as_view(), name="comment_edit"),
@@ -28,7 +22,6 @@ urlpatterns = [
     url(r'^tags/$', views.ForumTagsList.as_view(), name="forum_tags"),
     url(r'^badges/$', views.ForumBadgeList.as_view(), name="forum_badges"),
     url(r'^profile/$', views.UserProfileView.as_view(), name="user_profile"),
-    url(r'^upload/profile-pic/$', views.UserProfilePicView.as_view(), name="user_profile_pic"),
     url(r'^send-mail/settings/$', views.UserSettingsView.as_view(), name="user_settings"),
 
     url(r'^category/(?P<slug>[-\w]+)/$', views.ForumCategoryView.as_view(), name="forum_category_detail"),
@@ -40,9 +33,7 @@ urlpatterns = [
     url(r'^comment/votes/(?P<pk>[-\w]+)/up/$', views.CommentVoteUpView.as_view(), name="comment_vote_up"),
     url(r'^comment/votes/(?P<pk>[-\w]+)/down/$', views.CommentVoteDownView.as_view(), name="comment_vote_down"),
 
-    url(r'^dashboard/$', views.LoginView.as_view(), name="dashboard"),
-    # url(r'^dashboard/$', DashboardView.as_view(), name="dashboard"),
-    url(r'^logout/$', views.getout, name='out'),
+    url(r'^dashboard/$', views.DashboardView.as_view(), name="dashboard"),
 
     url(r'^dashboard/category/list/$', views.CategoryList.as_view(), name="categories"),
     url(r'^dashboard/category/add/$', views.CategoryAdd.as_view(), name="add_category"),
