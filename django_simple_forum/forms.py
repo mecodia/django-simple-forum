@@ -156,25 +156,3 @@ class UserProfileForm(forms.ModelForm):
         model = UserProfile
         fields = ['badges']
 
-
-class ChangePasswordForm(forms.Form):
-    oldpassword = forms.CharField(max_length=50)
-    newpassword = forms.CharField(max_length=50)
-    retypepassword = forms.CharField(max_length=50)
-
-
-class UserChangePasswordForm(forms.Form):
-    newpassword = forms.CharField(max_length=50)
-    retypepassword = forms.CharField(max_length=50)
-
-
-class ForgotPasswordForm(forms.Form):
-    email = forms.CharField(max_length=200)
-
-    def clean_username(self):
-        user = UserProfile.objects.filter(user__email=self.data.get("email"))
-        if user:
-            return self.data.get("email")
-        else:
-            raise forms.ValidationError(
-                "User with this email ID doesn't exists.")

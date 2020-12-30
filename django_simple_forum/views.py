@@ -926,30 +926,6 @@ class TopicVoteDownView(LoginRequiredMixin, View):
         return JsonResponse({"status": status})
 
 
-class ChangePassword(AdminMixin, FormView):
-    template_name = 'dashboard/change_password.html'
-    form_class = ChangePasswordForm
-
-    def form_valid(self, form):
-        user = self.request.user
-        if not check_password(self.request.POST['oldpassword'], user.password):
-            return JsonResponse({
-                'error': True,
-                'response': {'oldpassword': 'Invalid old password'}
-            })
-        if self.request.POST['newpassword'] != self.request.POST['retypepassword']:
-            return JsonResponse({
-                'error': True,
-                'response': {'newpassword': 'New password and Confirm Passwords did not match'}
-            })
-        user.set_password(self.request.POST['newpassword'])
-        user.save()
-        return JsonResponse({'error': False, 'message': 'Password changed successfully'})
-
-    def form_invalid(self, form):
-        return JsonResponse({'error': True, 'response': form.errors})
-
-
 class UserProfileView(LoginRequiredMixin, TemplateView):
     template_name = 'forum/profile.html'
 

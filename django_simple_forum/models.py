@@ -134,7 +134,7 @@ class Topic(models.Model):
     description = models.TextField()
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     status = models.CharField(choices=STATUS, max_length=10)
-    category = models.ForeignKey(ForumCategory)
+    category = models.ForeignKey(ForumCategory, on_delete=models.SET_NULL, null=True)
     created_on = models.DateTimeField(auto_now=True)
     updated_on = models.DateTimeField(auto_now=True)
     no_of_views = models.IntegerField(default='0')

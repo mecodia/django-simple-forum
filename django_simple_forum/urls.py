@@ -66,6 +66,4 @@ urlpatterns = [
     url(r'^dashboard/topic/view/(?P<slug>[-\w]+)/$', views.TopicDetail.as_view(), name="topic_detail"),
     url(r'^dashboard/topic/status/(?P<slug>[-\w]+)/$', views.TopicStatus.as_view(), name="topic_status"),
 
-    url(r'^dashboard/change-password/$', views.ChangePassword.as_view(), name="change_password"),
-
 ]
