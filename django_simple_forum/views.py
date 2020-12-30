@@ -1,28 +1,16 @@
-import requests
-import urllib
-
-try:
-    from urllib.parse import urlparse
-except ImportError:
-    from urlparse import urlparse
 from datetime import datetime
 
-from django.contrib.auth import logout, login, load_backend
-from django.core.urlresolvers import reverse, reverse_lazy
-from django.core.files import File
 from django.conf import settings
 from django.contrib.auth.hashers import check_password
 from django.db.models import Q
 from django.http import JsonResponse
-from django.http.response import HttpResponseRedirect, HttpResponse
-from django.views.generic import TemplateView, UpdateView, ListView, CreateView, DetailView, \
-    DeleteView, View
-from django.views.generic.edit import FormView
-from django.views.generic.detail import SingleObjectMixin
 from django.shortcuts import redirect, render, get_object_or_404
 from django.template import Context, loader
 from django.template.defaultfilters import slugify
-from django.utils.crypto import get_random_string
+from django.urls import reverse, reverse_lazy
+from django.views.generic import TemplateView, UpdateView, ListView, CreateView, DetailView, \
+    DeleteView, View
+from django.views.generic.edit import FormView
 
 try:
     from django.contrib.auth import get_user_model
@@ -31,11 +19,10 @@ try:
 except ImportError:
     from django.contrib.auth.models import User
 
-from .forms import LoginForm
 from .models import ForumCategory, STATUS, Badge, Topic, Tags, UserProfile, UserTopics, Timeline, Comment, Vote
 from .mixins import AdminMixin, LoginRequiredMixin, CanUpdateTopicMixin
-from .forms import CategoryForm, BadgeForm, RegisterForm, TopicForm, CommentForm, UserProfileForm, \
-    ChangePasswordForm, UserChangePasswordForm, ForgotPasswordForm
+from .forms import CategoryForm, BadgeForm, TopicForm, CommentForm, UserProfileForm, \
+    ChangePasswordForm
 
 
 def timeline_activity(user, content_object, namespace, event_type):
@@ -80,7 +67,7 @@ class CategoryDetailView(AdminMixin, DetailView):
     slug_field = "slug"
     context_object_name = 'category'
 
-    def get_object(self):
+    def get_object(self, **kwargs):
         return get_object_or_404(ForumCategory, slug=self.kwargs['slug'])
 
 
@@ -126,7 +113,7 @@ class CategoryDelete(AdminMixin, DeleteView):
     template_name = "dashboard/categories.html"
     success_url = '/forum/dashboard/categories/'
 
-    def get_object(self):
+    def get_object(self, **kwargs):
         return get_object_or_404(ForumCategory, slug=self.kwargs['slug'])
 
     def get_success_url(self):
@@ -144,7 +131,7 @@ class CategoryEdit(AdminMixin, UpdateView):
     template_name = "dashboard/category_add.html"
     context_object_name = 'category'
 
-    def get_object(self):
+    def get_object(self, **kwargs):
         return get_object_or_404(ForumCategory, slug=self.kwargs['slug'])
 
     def get_form_kwargs(self):
@@ -215,7 +202,7 @@ class BadgeDetailView(AdminMixin, DetailView):
     slug_field = "slug"
     context_object_name = 'badge'
 
-    def get_object(self):
+    def get_object(self, **kwargs):
         return get_object_or_404(Badge, slug=self.kwargs['slug'])
 
 
@@ -253,7 +240,7 @@ class BadgeDelete(AdminMixin, DeleteView):
     template_name = "dashboard/badges.html"
     success_url = '/forum/dashboard/badges/'
 
-    def get_object(self):
+    def get_object(self, **kwargs):
         return get_object_or_404(Badge, slug=self.kwargs['slug'])
 
     def get_success_url(self):
@@ -271,7 +258,7 @@ class BadgeEdit(AdminMixin, UpdateView):
     form_class = BadgeForm
     context_object_name = 'badge'
 
-    def get_object(self):
+    def get_object(self, **kwargs):
         return get_object_or_404(Badge, slug=self.kwargs['slug'])
 
     def get_form_kwargs(self):
@@ -327,7 +314,7 @@ class DashboardUserEdit(AdminMixin, UpdateView):
     form_class = UserProfileForm
     context_object_name = 'user_profile'
 
-    def get_object(self):
+    def get_object(self, **kwargs):
         return get_object_or_404(UserProfile, user_id=self.kwargs['user_id'])
 
     # def get_form_kwargs(self):
@@ -358,9 +345,8 @@ class DashboardUserEdit(AdminMixin, UpdateView):
         return context
 
 
-class IndexView(FormView):
+class IndexView(LoginRequiredMixin, FormView):
     template_name = 'forum/topic_list.html'
-    form_class = RegisterForm
 
     def get_context_data(self, **kwargs):
         context = super(IndexView, self).get_context_data(**kwargs)
@@ -368,44 +354,15 @@ class IndexView(FormView):
         context['topic_list'] = topics
         return context
 
-    def form_valid(self, form):
-        user = User.objects.create(
-            username=form.cleaned_data['username'], email=form.cleaned_data['email'])
-        user.set_password(form.cleaned_data['password'])
-        user.first_name = form.cleaned_data['first_name']
-        user.is_active = True
-        user.save()
-        user.backend = 'django.contrib.auth.backends.ModelBackend'
-        UserProfile.objects.create(user=user, user_roles='Publisher')
-        login(self.request, user)
 
-        timeline_activity(user=user, content_object=user,
-                          namespace='created on', event_type="user-create")
-
-        data = {'error': False, 'response': 'Successfully Created Badge'}
-        return JsonResponse(data)
-
-    def form_invalid(self, form):
-        return JsonResponse({'error': True, 'response': form.errors})
-
-
-class ForumLoginView(FormView):
+class ForumLoginView(LoginRequiredMixin, FormView):
     template_name = 'forum/topic_list.html'
-    form_class = LoginForm
 
     def get_context_data(self, **kwargs):
         context = super(ForumLoginView, self).get_context_data(**kwargs)
         topics = Topic.objects.filter(status='Published')
         context['topic_list'] = topics
         return context
-
-    def form_valid(self, form):
-        login(self.request, form.get_user())
-        data = {'error': False, 'response': 'Successfully user loggedin'}
-        return JsonResponse(data)
-
-    def form_invalid(self, form):
-        return JsonResponse({'error': True, 'response': form.errors})
 
 
 class TopicAdd(LoginRequiredMixin, CreateView):
@@ -432,22 +389,6 @@ class TopicAdd(LoginRequiredMixin, CreateView):
                 else:
                     each = Tags.objects.filter(slug=slugify(tag)).first()
                     topic.tags.add(each)
-        # liked_users_ids = UserTopics.objects.filter(
-        #     topic__category=topic.category, is_like=True).values_list('user', flat=True)
-        # followed_users = UserTopics.objects.filter(
-        #     topic__category=topic.category, is_followed=True).values_list('user', flat=True)
-        # users = UserProfile.objects.filter(user_id__in=set(all_users))
-
-        # for user in users:
-        #     mto = [user.user.email]
-        #     c = Context({'comment': comment, "user": user.user,
-        #                  'topic_url': settings.HOST_URL + reverse('django_simple_forum:view_topic', kwargs={'slug': topic.slug}),
-        #                  "HOST_URL": settings.HOST_URL})
-        #     t = loader.get_template('emails/new_topic.html')
-        #     subject = "New Topic For The Category" + (topic.category.title)
-        #     rendered = t.render(c)
-        #     mfrom = settings.DEFAULT_FROM_EMAIL
-        #     Memail(mto, mfrom, subject, rendered)
 
         timeline_activity(user=self.request.user, content_object=self.request.user,
                           namespace='created topic on', event_type="topic-create")
@@ -510,7 +451,7 @@ class TopicUpdateView(CanUpdateTopicMixin, UpdateView):
         return JsonResponse({'error': True, 'errors': form.errors})
 
 
-class TopicList(ListView):
+class TopicList(LoginRequiredMixin, ListView):
     template_name = 'forum/topic_list.html'
     context_object_name = "topic_list"
 
@@ -523,7 +464,7 @@ class TopicList(ListView):
         return queryset
 
 
-class TopicView(TemplateView):
+class TopicView(LoginRequiredMixin, TemplateView):
     template_name = 'forum/view_topic.html'
 
     def get_object(self):
@@ -538,10 +479,7 @@ class TopicView(TemplateView):
             category=self.get_object().category).exclude(id=self.get_object().id)
         job_url = 'http://' + self.request.META['HTTP_HOST'] + reverse(
             'django_simple_forum:view_topic', kwargs={'slug': self.get_object().slug})
-        try:
-            minified_url = google_mini(job_url, settings.MINIFIED_URL)
-        except:
-            minified_url = job_url
+        minified_url = job_url
 
         context['minified_url'] = minified_url
         context['suggested_topics'] = suggested_topics
@@ -553,7 +491,7 @@ class TopicDeleteView(CanUpdateTopicMixin, DeleteView):
     template_name = "forum/topic_delete.html"
     success_url = reverse_lazy("django_simple_forum:topic_list")
 
-    def get_object(self):
+    def get_object(self, **kwargs):
         if not hasattr(self, "object"):
             self.object = super(TopicDeleteView, self).get_object()
         return self.object
@@ -639,7 +577,7 @@ class CommentAdd(LoginRequiredMixin, CreateView):
             subject = "New Comment For The Topic " + (comment.topic.title)
             rendered = t.render(c)
             mfrom = settings.DEFAULT_FROM_EMAIL
-            Memail(mto, mfrom, subject, rendered, email_template_name=None, context=None)
+            # TODO: Memail(mto, mfrom, subject, rendered, email_template_name=None, context=None)
 
         for user in comment.mentioned.all():
             mto = [user.user.email]
@@ -650,7 +588,7 @@ class CommentAdd(LoginRequiredMixin, CreateView):
             subject = "New Comment For The Topic " + (comment.topic.title)
             rendered = t.render(c)
             mfrom = settings.DEFAULT_FROM_EMAIL
-            Memail(mto, mfrom, subject, rendered)
+            # TODO: Memail(mto, mfrom, subject, rendered)
 
         timeline_activity(user=self.request.user, content_object=comment,
                           namespace='commented for the', event_type="comment-create")
@@ -677,7 +615,7 @@ class CommentEdit(LoginRequiredMixin, UpdateView):
     form_class = CommentForm
     slug_field = 'slug'
 
-    def get_object(self):
+    def get_object(self, **kwargs):
         return get_object_or_404(Comment, id=self.kwargs['comment_id'])
 
     def form_valid(self, form):
@@ -723,7 +661,7 @@ class CommentDelete(LoginRequiredMixin, DeleteView):
     slug_field = 'comment_id'
     template_name = "dashboard/categories.html"
 
-    def get_object(self):
+    def get_object(self, **kwargs):
         return get_object_or_404(Comment, id=self.kwargs['comment_id'])
 
     def get_success_url(self):
@@ -774,7 +712,7 @@ class TopicLike(LoginRequiredMixin, View):
                              'no_of_users': topic.get_topic_users().count()})
 
 
-class ForumCategoryList(ListView):
+class ForumCategoryList(LoginRequiredMixin, ListView):
     queryset = ForumCategory.objects.filter(
         is_active=True, is_votable=True).order_by('-created_on')
     template_name = 'forum/categories.html'
@@ -782,7 +720,7 @@ class ForumCategoryList(ListView):
     paginate_by = '10'
 
 
-class ForumTagsList(ListView):
+class ForumTagsList(LoginRequiredMixin, ListView):
     queryset = Tags.objects.filter()
     template_name = 'forum/tags.html'
     context_object_name = "tags"
@@ -796,7 +734,7 @@ class ForumTagsList(ListView):
         return render(request, self.template_name, {'tags': tags})
 
 
-class ForumBadgeList(ListView):
+class ForumBadgeList(LoginRequiredMixin, ListView):
     queryset = Tags.objects.filter()
     template_name = 'forum/badges.html'
     context_object_name = "badges_list"
@@ -810,7 +748,7 @@ class ForumBadgeList(ListView):
         return render(request, self.template_name, {'tags': tags})
 
 
-class ForumCategoryView(ListView):
+class ForumCategoryView(LoginRequiredMixin, ListView):
     template_name = 'forum/topic_list.html'
 
     def get_queryset(self, queryset=None):
@@ -823,7 +761,7 @@ class ForumCategoryView(ListView):
         return topics
 
 
-class ForumTagsView(TemplateView):
+class ForumTagsView(LoginRequiredMixin, TemplateView):
     template_name = 'forum/topic_list.html'
 
     def get_context_data(self, **kwargs):
@@ -873,7 +811,7 @@ class DashboardUserDelete(AdminMixin, DeleteView):
     def get_success_url(self):
         return redirect(reverse('django_simple_forum:users'))
 
-    def get_object(self):
+    def get_object(self, **kwargs):
         return get_object_or_404(User, id=self.kwargs['user_id'])
 
     def post(self, request, *args, **kwargs):
@@ -1025,7 +963,7 @@ class UserProfileView(LoginRequiredMixin, TemplateView):
         return context
 
 
-class ProfileView(TemplateView):
+class ProfileView(LoginRequiredMixin, TemplateView):
     template_name = 'forum/profile.html'
     slug_field = 'user_name'
 
@@ -1057,7 +995,7 @@ class UserSettingsView(LoginRequiredMixin, View):
                              "send_mailnotifications": user_profile.send_mailnotifications})
 
 
-class UserDetailView(TemplateView):
+class UserDetailView(LoginRequiredMixin, TemplateView):
     template_name = 'forum/profile.html'
     slug_field = 'user_name'
 
@@ -1072,9 +1010,9 @@ class UserDetailView(TemplateView):
 
 def get_mentioned_user(request, topic_id):
     topic = get_object_or_404(Topic, id=topic_id)
+    list_data = []
     if request.method == 'GET':
         topic_users = topic.get_topic_users()
-        list_data = []
         for user in topic_users:
             data = {}
             data['username'] = user.user.email.split('@')[0]
@@ -1082,10 +1020,3 @@ def get_mentioned_user(request, topic_id):
             data['fullname'] = user.user.email
             list_data.append(data)
     return JsonResponse({'data': list_data})
-
-
-def comment_mentioned_users_list(data):
-    mentioned_users = data.split(',')
-    mentioned_users_list = [user.strip('@') for user in mentioned_users]
-    result = User.objects.filter(username__in=mentioned_users_list)
-    return result

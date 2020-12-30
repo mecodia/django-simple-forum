@@ -1,6 +1,8 @@
 from django.contrib.auth.forms import AuthenticationForm
+
 try:
     from django.contrib.auth import get_user_model
+
     User = get_user_model()
 except ImportError:
     from django.contrib.auth.models import User
@@ -22,7 +24,6 @@ class LoginForm(AuthenticationForm):
 
 
 class RegisterForm(forms.ModelForm):
-
     class Meta:
         model = User
         fields = ['email', 'first_name', 'username', 'password']
@@ -102,13 +103,12 @@ class TopicForm(forms.ModelForm):
     class Meta:
         model = Topic
         fields = ("title", "category", "description", "tags")
-    
+
     def clean_title(self):
         if Topic.objects.filter(slug=slugify(self.cleaned_data['title'])).exclude(id=self.instance.id):
             raise forms.ValidationError('Topic with this Name already exists.')
 
         return self.cleaned_data['title']
-
 
     def save(self, commit=True):
         instance = super(TopicForm, self).save(commit=False)
@@ -125,7 +125,6 @@ class TopicForm(forms.ModelForm):
 
 
 class CommentForm(forms.ModelForm):
-
     class Meta:
         model = Comment
         fields = ('comment', 'topic')
@@ -153,7 +152,6 @@ class CommentForm(forms.ModelForm):
 
 
 class UserProfileForm(forms.ModelForm):
-
     class Meta:
         model = UserProfile
         fields = ['badges']

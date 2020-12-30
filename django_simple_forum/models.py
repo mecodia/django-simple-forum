@@ -1,9 +1,7 @@
-from django.db import models
 from django.conf import settings
-from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
-import hashlib
-from datetime import datetime
+from django.contrib.contenttypes.models import ContentType
+from django.db import models
 
 STATUS = (
     ('Draft', 'Draft'),
@@ -42,8 +40,8 @@ class Badge(models.Model):
 # user profile to store no of votes available to user, badges for a topic, user roles,
 class UserProfile(models.Model):
     file_prepend = "forum_user/profilepics/"
-    
-    user = models.ForeignKey(User)
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     used_votes = models.IntegerField(default='0')
     user_roles = models.CharField(choices=USER_ROLES, max_length=10)
     badges = models.ManyToManyField(Badge)
@@ -100,7 +98,7 @@ class UserProfile(models.Model):
 
 
 class ForumCategory(models.Model):
-    created_by = models.ForeignKey(User)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     title = models.CharField(max_length=1000)
     is_active = models.BooleanField(default=False)
     color = models.CharField(max_length=20, default="#999999")
@@ -108,7 +106,7 @@ class ForumCategory(models.Model):
     created_on = models.DateTimeField(auto_now_add=True)
     slug = models.SlugField(max_length=1000)
     description = models.TextField()
-    parent = models.ForeignKey('self', blank=True, null=True)
+    parent = models.ForeignKey('self', blank=True, null=True, on_delete=models.CASCADE)
 
     def get_topics(self):
         topics = Topic.objects.filter(category=self, status='Published')
@@ -123,17 +121,18 @@ class Vote(models.Model):
         ("U", "Up"),
         ("D", "Down"),
     )
-    user = models.ForeignKey(User)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     type = models.CharField(choices=TYPES, max_length=1)
     created_on = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.user
 
+
 class Topic(models.Model):
     title = models.CharField(max_length=2000)
     description = models.TextField()
-    created_by = models.ForeignKey(User)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     status = models.CharField(choices=STATUS, max_length=10)
     category = models.ForeignKey(ForumCategory)
     created_on = models.DateTimeField(auto_now=True)
@@ -172,15 +171,17 @@ class Topic(models.Model):
         return self.votes.filter(type="U").count()
 
     def down_votes_count(self):
-        return self.votes.filter(type="D").count()  
+        return self.votes.filter(type="D").count()
 
     def __str__(self):
-        return self.title      
+        return self.title
 
-# user followed topics
+    # user followed topics
+
+
 class UserTopics(models.Model):
-    user = models.ForeignKey(User)
-    topic = models.ForeignKey(Topic)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    topic = models.ForeignKey(Topic, on_delete=models.CASCADE)
     is_followed = models.BooleanField(default=False)
     followed_on = models.DateField(null=True, blank=True)
     no_of_votes = models.IntegerField(default='0')
@@ -190,11 +191,11 @@ class UserTopics(models.Model):
 
 class Comment(models.Model):
     comment = models.TextField(null=True, blank=True)
-    commented_by = models.ForeignKey(User, related_name="commented_by")
-    topic = models.ForeignKey(Topic, related_name="topic_comments")
+    commented_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="commented_by")
+    topic = models.ForeignKey(Topic, on_delete=models.CASCADE, related_name="topic_comments")
     created_on = models.DateTimeField(auto_now_add=True)
     updated_on = models.DateTimeField(auto_now_add=True)
-    parent = models.ForeignKey("self", blank=True, null=True, related_name="comment_parent")
+    parent = models.ForeignKey("self", blank=True, null=True, related_name="comment_parent", on_delete=models.CASCADE)
     mentioned = models.ManyToManyField(User, related_name="mentioned_users")
     votes = models.ManyToManyField(Vote)
 
@@ -211,12 +212,12 @@ class Comment(models.Model):
 
 # user activity
 class Timeline(models.Model):
-    content_type = models.ForeignKey(ContentType, related_name="content_type_timelines")
+    content_type = models.ForeignKey(ContentType, related_name="content_type_timelines", on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey("content_type", "object_id")
     namespace = models.CharField(max_length=250, default="default", db_index=True)
     event_type = models.CharField(max_length=250, db_index=True)
-    user = models.ForeignKey(User, null=True)
+    user = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
     data = models.TextField(null=True, blank=True)
     created_on = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)

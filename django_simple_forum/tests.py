@@ -1,10 +1,12 @@
 from django.test import TestCase, Client
+
 try:
     from django.contrib.auth import get_user_model
+
     User = get_user_model()
 except ImportError:
     from django.contrib.auth.models import User
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django_simple_forum.models import (
     ForumCategory, Badge, UserProfile, Topic, Comment, Tags
 )

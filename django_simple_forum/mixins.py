@@ -1,6 +1,7 @@
-from django.shortcuts import redirect, get_object_or_404
-from django.core.urlresolvers import reverse
 from django.contrib.auth import logout
+from django.urls import reverse
+from django.shortcuts import redirect, get_object_or_404
+
 from django_simple_forum.models import Topic
 
 
